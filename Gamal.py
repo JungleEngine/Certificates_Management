@@ -30,57 +30,58 @@ A signature (r, s) produced by A can be verified as follows:
 4. Return v1 = v2.
 """
 
+
 # returns (p,a) containing a safe prime p with s bits and a generator a for Z∗p.
 def pair(s):
-	safe_prime = 0
-	while(True):
-		p = num.getPrime(s)
-		safe_prime = 2*p+1
-		if(num.isPrime(safe_prime)):
-			break
-	while(True):
-          a = random.randint(2, safe_prime-1) 
-          if((safe_prime-1)%a != 1):
+    safe_prime = 0
+    while (True):
+        p = num.getPrime(s)
+        safe_prime = 2 * p + 1
+        if (num.isPrime(safe_prime)):
             break
-        
-	return safe_prime, a
+    while (True):
+        a = random.randint(2, safe_prime - 1)
+        if ((safe_prime - 1) % a != 1):
+            break
+
+    return safe_prime, a
 
 
 # Key Generation
 def generateElGamalKey(s):
-	p, a = pair(s)
-	z = random.randint(1, p-2)
-	b = pow(a, z, p)
-	return p, a, z, b
+    p, a = pair(s)
+    z = random.randint(1, p - 2)
+    b = pow(a, z, p)
+    return p, a, z, b
+
 
 # Signature Generation
 def generateElGamalSignature(p, a, z, m):
-	while 1:
-		k = random.randint(1, p-2)
-		if num.GCD(k, p-1) == 1:
-			break
-	r = pow(a, k, p)
-	l = num.inverse(k, p-1)
-	s = l*(m-z*r) % (p-1)
-	return r,s
+    while 1:
+        k = random.randint(1, p - 2)
+        if num.GCD(k, p - 1) == 1:
+            break
+    r = pow(a, k, p)
+    l = num.inverse(k, p - 1)
+    s = l * (m - z * r) % (p - 1)
+    return r, s
 
-# Signature Verification 
+
+# Signature Verification
 def verifyElGamalSignature(p, a, b, r, s, m):
-	if r < 1 or r > p-1:
-		return False
-	v1 = pow(b, r, p) % p * pow(r,s,p) % p
-	v2 = pow(a, m, p)
-	return v1 == v2
+    if r < 1 or r > p - 1:
+        return False
+    v1 = pow(b, r, p) % p * pow(r, s, p) % p
+    v2 = pow(a, m, p)
+    return v1 == v2
 
 
 if __name__ == "__main__":
-	
-	message = 36
-	print("Message: ", message)
-	p, a, z, b = generateElGamalKey(10)
-	print("p, a, z, b", p, a, z, b)
-	rr, ss = generateElGamalSignature(p, a, z, message)
-	print("rr, ss", rr, ss)
-	isValid = verifyElGamalSignature(p, a, b, rr, ss, message)
-	print("Valid Signature: ", isValid)
-
+    message = 36
+    print("Message: ", message)
+    p, a, z, b = generateElGamalKey(10)
+    print("p, a, z, b", p, a, z, b)
+    rr, ss = generateElGamalSignature(p, a, z, message)
+    print("rr, ss", rr, ss)
+    isValid = verifyElGamalSignature(p, a, b, rr, ss, message)
+    print("Valid Signature: ", isValid)
