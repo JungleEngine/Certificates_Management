@@ -79,9 +79,9 @@ def verifyElGamalSignature(p, a, b, r, s, m):
 if __name__ == "__main__":
     message = 36
     print("Message: ", message)
-    p, a, z, b = generateElGamalKey(10)
-    print("p, a, z, b", p, a, z, b)
-    rr, ss = generateElGamalSignature(p, a, z, message)
+    sys_param_p, sys_param_a, sig_priv_key, sig_pub_key = generateElGamalKey(10)
+    print("p, a, sig_priv_key, sig_pub_key", sys_param_p, sys_param_a, sig_priv_key, sig_pub_key)
+    rr, ss = generateElGamalSignature(sys_param_p, sys_param_a, sig_priv_key, message)  # signature.
     print("rr, ss", rr, ss)
-    isValid = verifyElGamalSignature(p, a, b, rr, ss, message)
+    isValid = verifyElGamalSignature(sys_param_p, sys_param_a, sig_pub_key, rr, ss, message)
     print("Valid Signature: ", isValid)

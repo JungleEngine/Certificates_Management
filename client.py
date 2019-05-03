@@ -5,28 +5,59 @@ from flask import Flask, redirect, url_for, request
 import threading
 import os
 import base64
+
 app = Flask(__name__)
 import requests
 import argparse
 from base64 import b64encode, b64decode
+
 
 @app.route('/msg', methods=['POST'])
 def receive_message():
     input_json = request.get_json(force=True)
 
     encrypted_message = input_json["msg"]
+    sender_id = input_json["id"]
     signed_message = private_key_decrypt(encrypted_message, client_private_key)  # Decrypt the message.
-    valid_public_key = True
-    valid_signature = True  # TODO: check the signature
 
-    print("Message received from: ", input_json["id"])
+    signature = signed_message  # TODO: get signature from message
+
+    print(" Requesting certificates for user: ", sender_id)
+
+    client_data = {'id': client_id,
+                   'receiver': sender_id}
+
+    res = requests.post(ca_url + "/get_client_key_cert", json=client_data)
+
+    receiver_cert = cert_from_bytes(str.encode(res.text))
+    valid_cert = cert_validate_signature(receiver_cert, ca_public_key)  # Validate cert.
+    if valid_cert:
+        print("RSA public key cert received from CA for receiver: ", client_data["receiver"],
+              " is valid")
+    else:
+        print("RSA public key cert received from CA for receiver: ", client_data["receiver"],
+              " is invalid")
+        return
+    sender_pub_key = cert_get_pub_key(receiver_cert)
+
+    res = requests.post(ca_url + "/get_client_gammal_cert", json=client_data)
+    receiver_cert = cert_from_bytes(str.encode(res.text))
+    valid_cert = cert_validate_signature(receiver_cert, ca_public_key)  # Validate cert.
+    if valid_cert:
+        print("Gammal public key cert received from CA for receiver: ", client_data["receiver"],
+              " is valid")
+    else:
+        print("Gammal public key cert received from CA for receiver: ", client_data["receiver"],
+              " is invalid")
+        return
+
+    valid_signature = True  # TODO: validate signature using sender_pub_key
+
+    print("Message received from: ", sender_id)
     if valid_signature:
-        print("Valid signature")
+        print("Valid signature of:", sender_id)
 
-    if valid_public_key:
-        print("Valid public key")
-
-    if valid_signature and valid_public_key:
+    if valid_signature:
         print("Message:", signed_message)
     return "ok"
 
@@ -51,25 +82,13 @@ def send_message(message, url):
 
     receiver_public_key = cert_get_pub_key(receiver_cert)
 
-    res = requests.post(ca_url + "/get_client_gammal_cert", json=client_data)
-    receiver_cert = cert_from_bytes(str.encode(res.text))
-    valid_cert = cert_validate_signature(receiver_cert, ca_public_key)  # Validate cert.
-    if valid_cert:
-        print("Gammal public key cert received from CA for receiver: ", client_data["receiver"],
-              " is valid")
-    else:
-        print("Gammal public key cert received from CA for receiver: ", client_data["receiver"],
-              " is invalid")
-        return
-
-
     signed_message = message  # TODO: get the message signed
     encrypted_message = public_key_encrypt(signed_message, receiver_public_key)  # TODO: get the message encrypted
 
     encrypted_message = encrypted_message
 
     client_data = {'id': client_id,
-                   'msg':  encrypted_message
+                   'msg': encrypted_message
                    }
 
     print("client data: ", client_data["msg"])
