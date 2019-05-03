@@ -18,16 +18,25 @@ class FakePublicKey():
             self.set_key(pub_key)
 
     def set_key(self, pub_key):
+        key_size = 1000  # Work around with odd numbers.
+        if pub_key % 2 == 0:  # If even key then remove 1 and add it to key size.
+            key_size += 1
+            pub_key -= 1
+
         self._key = rsa.generate_private_key(
             public_exponent=pub_key,
-            key_size=2048,
+            key_size=key_size,
             backend=default_backend()).public_key()
 
     def get_key(self):
         return self._key
 
     def get_key_val(self):
-        return self._key.public_numbers().e
+        return self._key.public_numbers().e + self._key.key_size - 1000  # Work around to set even key.
+
+
+def get_fake_key_val(key):
+    return key.public_numbers().e + key.key_size - 1000  # Work around to set even key.
 
 
 def cert_build_signed(ca_priv_key, pub_key_to_store, domain):
@@ -220,9 +229,9 @@ if __name__ == "__main__":
     )
     public_key = private_key.public_key()  # Public key to sign the certificate
 
-    key = 50211111111111111111111111  # fake key to store,  for example el gammal key, unfortunately must be odd...
+    key = 10  # fake key to store,  for example el gammal key, unfortunately must be odd...
     fake_key = FakePublicKey(key)
 
     cert = cert_build_signed(private_key, fake_key.get_key(), "ali")
     print(cert_validate_signature(cert, public_key))
-    print(cert_get_pub_key(cert).public_numbers().e)  # Check the fake key we attached to the certificate
+    print(fake_key.get_key_val())  # Check the fake key we attached to the certificate
