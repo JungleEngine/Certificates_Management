@@ -1,8 +1,32 @@
 from flask import Flask, redirect, url_for, request
 from cert_utils import *
+from cryptography.hazmat.primitives import serialization
+
 import os
 
 app = Flask(__name__)
+
+
+@app.route('/get_client_gammal_cert', methods=['POST'])
+def get_gammal_cert():
+    input_json = request.get_json(force=True)
+    client_id = input_json["id"]
+    receiver_id = input_json["receiver"]
+    receiver_cert = cert_load(
+        curr_dir_path + "/database/client_" + receiver_id + "_gammal_cert.pem")
+    print(" Received request for gammal certificate from: ", client_id)
+    return cert_to_bytes(receiver_cert)
+
+
+@app.route('/get_client_key_cert', methods=['POST'])
+def get_rsa_cert():
+    input_json = request.get_json(force=True)
+    client_id = input_json["id"]
+    receiver_id = input_json["receiver"]
+    receiver_cert = cert_load(
+        curr_dir_path + "/database/client_" + receiver_id + "_key_cert.pem")
+    print(" Received request for RSA certificate from: ", client_id)
+    return cert_to_bytes(receiver_cert)
 
 
 @app.route('/generate_gammal_cert', methods=['POST'])
@@ -57,6 +81,6 @@ if __name__ == "__main__":
         ca_public_key = ca_private_key.public_key()  # Generate public key for CA.
 
         public_key_write(curr_dir_path + '/ca/ca_public_key.pem', ca_public_key)  # Writing ca public key.
-        private_key_write(curr_dir_path + '/ca/ca_public_key.pem', ca_private_key)  # Writing ca private key.
+        private_key_write(curr_dir_path + '/ca/ca_private_key.pem', ca_private_key)  # Writing ca private key.
 
     app.run(debug=True)

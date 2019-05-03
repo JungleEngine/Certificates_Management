@@ -5,7 +5,7 @@ from cryptography.hazmat.backends import default_backend
 from cryptography.hazmat.primitives import serialization
 from cryptography.hazmat.primitives.asymmetric import padding, rsa
 import datetime
-
+from base64 import b64encode, b64decode
 
 class FakePublicKey():
     """
@@ -87,10 +87,22 @@ def cert_write(path, cert):
 
 def cert_load(path):
     """
-    Loads certificate from PEM file.
+    Returns certificate from PEM file.
     """
     cert = x509.load_pem_x509_certificate(open(path, 'rb').read(), default_backend())
     return cert
+
+def cert_from_bytes(bytes):
+    """
+    Returns cert from bytes.
+    """
+    return x509.load_pem_x509_certificate(bytes, default_backend())
+
+def cert_to_bytes(cert):
+    """
+    Returns bytes from cert.
+    """
+    return cert.public_bytes(serialization.Encoding.PEM)
 
 
 def cert_validate_signature(cert, pub_key):
@@ -143,7 +155,7 @@ def public_key_write(path, key):
         )
 
 
-def public_key_load(path, key):
+def public_key_load(path):
     """
     Returns public key PEM file.
     """
@@ -165,6 +177,39 @@ def public_key_from_bytes(bytes):
     Returns public key from bytes.
     """
     return serialization.load_pem_public_key(bytes, default_backend())
+
+
+def public_key_encrypt(msg, key):
+    """
+    Returns Encrypted message using key.
+    """
+    ciphertext = key.encrypt(
+        msg.encode(),
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    )
+    return b64encode(ciphertext)
+
+
+def private_key_decrypt(ciphertext, key):
+    """
+    Returns Encrypted message using key.
+    """
+
+    ciphertext = b64decode(ciphertext)
+
+    message = (key.decrypt(
+        ciphertext,
+        padding.OAEP(
+            mgf=padding.MGF1(algorithm=hashes.SHA256()),
+            algorithm=hashes.SHA256(),
+            label=None
+        )
+    ))
+    return message.decode()
 
 
 if __name__ == "__main__":

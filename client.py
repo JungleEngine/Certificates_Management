@@ -3,18 +3,19 @@ from cryptography.hazmat.primitives.asymmetric import padding, rsa
 from cryptography.hazmat.primitives import serialization
 from flask import Flask, redirect, url_for, request
 import threading
-
+import os
+import base64
 app = Flask(__name__)
 import requests
 import argparse
-
+from base64 import b64encode, b64decode
 
 @app.route('/msg', methods=['POST'])
 def receive_message():
     input_json = request.get_json(force=True)
 
     encrypted_message = input_json["msg"]
-    signed_message = encrypted_message  # Decrypt the message.
+    signed_message = private_key_decrypt(encrypted_message, client_private_key)  # Decrypt the message.
     valid_public_key = True
     valid_signature = True  # TODO: check the signature
 
@@ -31,9 +32,48 @@ def receive_message():
 
 
 def send_message(message, url):
+    """
+    Get receiver certificate, validate it, encrypts the message with it and then send it.
+    """
     client_data = {'id': client_id,
-                   'msg': message
+                   'receiver': other_client_id}
+    res = requests.post(ca_url + "/get_client_key_cert", json=client_data)
+
+    receiver_cert = cert_from_bytes(str.encode(res.text))
+    valid_cert = cert_validate_signature(receiver_cert, ca_public_key)  # Validate cert.
+    if valid_cert:
+        print("RSA public key cert received from CA for receiver: ", client_data["receiver"],
+              " is valid")
+    else:
+        print("RSA public key cert received from CA for receiver: ", client_data["receiver"],
+              " is invalid")
+        return
+
+    receiver_public_key = cert_get_pub_key(receiver_cert)
+
+    res = requests.post(ca_url + "/get_client_gammal_cert", json=client_data)
+    receiver_cert = cert_from_bytes(str.encode(res.text))
+    valid_cert = cert_validate_signature(receiver_cert, ca_public_key)  # Validate cert.
+    if valid_cert:
+        print("Gammal public key cert received from CA for receiver: ", client_data["receiver"],
+              " is valid")
+    else:
+        print("Gammal public key cert received from CA for receiver: ", client_data["receiver"],
+              " is invalid")
+        return
+
+
+    signed_message = message  # TODO: get the message signed
+    encrypted_message = public_key_encrypt(signed_message, receiver_public_key)  # TODO: get the message encrypted
+
+    encrypted_message = encrypted_message
+
+    client_data = {'id': client_id,
+                   'msg':  encrypted_message
                    }
+
+    print("client data: ", client_data["msg"])
+
     requests.post(url + "/msg", json=client_data)
 
 
@@ -51,29 +91,29 @@ def publish_client_data_to_ca(ca_url):
                    'public_key': gammal_public_key}
     requests.post(ca_url + "/generate_gammal_cert", json=client_data)
 
+
 def send_loop():
     while True:
         message = input(" write message to send to client: " + other_client_url +
                         " | write exit to exit\n")  # Message to send.
         if message == "exit":
             return
-
-        signed_message = message  # TODO: get the message signed
-        encrypted_message = signed_message  # TODO: get the message encrypted
-
-        send_message(encrypted_message, other_client_url)
+        send_message(message, other_client_url)
         print(" Message sent")
 
 
 if __name__ == "__main__":
+    curr_dir_path = os.path.dirname(os.path.realpath(__file__))  # Get current directory
     parser = argparse.ArgumentParser()
     parser.add_argument("-p", "--port", help="your port")
     parser.add_argument("-op", "--otherport", help="receiver port")
-    parser.add_argument("-id", "--name", help="your id")
     args = parser.parse_args()
 
+    ca_public_key = public_key_load(curr_dir_path + "/ca/ca_public_key.pem")
+
+    other_client_id = args.otherport
     other_client_url = 'http://127.0.0.1:' + args.otherport
-    client_id = args.name
+    client_id = args.port
     client_private_key = rsa.generate_private_key(
         public_exponent=65537,
         key_size=2048,
