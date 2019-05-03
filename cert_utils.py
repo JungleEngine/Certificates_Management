@@ -65,21 +65,21 @@ def cert_build_signed(ca_priv_key, pub_key_to_store, domain):
 
 def cert_get_pub_key(cert):
     """
-    Returns public_key from x.509 certificate
+    Returns public_key from x.509 certificate.
     """
     return cert.public_key()
 
 
 def cert_get_host(cert):
     """
-    Returns hostname from certificate
+    Returns hostname from certificate.
     """
     return cert.issuer.get_attributes_for_oid(NameOID.COMMON_NAME)[0].value
 
 
-def cert_save(cert, path):
+def cert_write(path, cert):
     """
-    Saves certificate as PEM
+    Saves certificate as PEM.
     """
     with open(path, "wb") as f:
         f.write(cert.public_bytes(serialization.Encoding.PEM))
@@ -87,7 +87,7 @@ def cert_save(cert, path):
 
 def cert_load(path):
     """
-    Loads certificate from PEM file
+    Loads certificate from PEM file.
     """
     cert = x509.load_pem_x509_certificate(open(path, 'rb').read(), default_backend())
     return cert
@@ -96,7 +96,7 @@ def cert_load(path):
 def cert_validate_signature(cert, pub_key):
     """
     Returns True if cert is signed by CA's private key given CA's public_key = pub_key, otherwise,
-    it returns False
+    it returns False.
     """
     try:
         pub_key.verify(cert.signature, cert.tbs_certificate_bytes, padding.PKCS1v15(),
@@ -108,7 +108,7 @@ def cert_validate_signature(cert, pub_key):
 
 def private_key_load(path):
     """
-    Returns private key from PEM file
+    Returns private key from PEM file.
     """
     with open(path, "rb") as key_file:
         private_key = serialization.load_pem_private_key(
@@ -121,7 +121,7 @@ def private_key_load(path):
 
 def private_key_write(path, key):
     """
-    Writes private key to a PEM file
+    Writes private key to a PEM file.
     """
     with open(path, "wb") as f:
         f.write(key.private_bytes(
@@ -133,7 +133,7 @@ def private_key_write(path, key):
 
 def public_key_write(path, key):
     """
-    Writes public key to a PEM file
+    Writes public key to a PEM file.
     """
     with open(path, "wb") as f:
         f.write(key.public_bytes(
@@ -145,9 +145,26 @@ def public_key_write(path, key):
 
 def public_key_load(path, key):
     """
-    Returns public key PEM file
+    Returns public key PEM file.
     """
     return serialization.load_pem_public_key(open(path, 'rb').read(), default_backend())
+
+
+def public_key_to_bytes(key):
+    """
+    Returns public key bytes.
+    """
+    return key.public_bytes(
+        encoding=serialization.Encoding.PEM,
+        format=serialization.PublicFormat.SubjectPublicKeyInfo,
+    )
+
+
+def public_key_from_bytes(bytes):
+    """
+    Returns public key from bytes.
+    """
+    return serialization.load_pem_public_key(bytes, default_backend())
 
 
 if __name__ == "__main__":
